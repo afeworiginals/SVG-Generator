@@ -4,7 +4,13 @@ logFile.encoding = "UTF-8";
 logFile.open("w");
 
 for (var i = 0; i < fonts.length; i++) {
-    logFile.writeln(fonts[i].name);
+    var f = fonts[i];
+    logFile.writeln(
+        'name: ' + f.name +
+        ' | family: ' + f.family +
+        ' | style: ' + f.style +
+        (f.postScriptName ? ' | postScriptName: ' + f.postScriptName : '')
+    );
 }
 
 logFile.close();

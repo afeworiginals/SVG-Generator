@@ -1,30 +1,72 @@
-// Check if a document is open, otherwise create a new one
-var doc = app.documents.length > 0 ? app.activeDocument : app.documents.add();
+// Combined SVG generator using injected order array
 
-// Set artboard size to 12x24 inches
-var artboard = doc.artboards[0];
-artboard.artboardRect = [0, 1728, 864, 0]; // 12x24 in points (72 pt/in)
+/*ORDERS_PLACEHOLDER*/
 
-function getColorRGB(colorName) {
-    var colors = {
-        // Existing entries (partial)
+var COLOR_MAP = {
+        // Page 1 - Solid Vinyls
         "black": [0, 0, 0],
         "matte black": [30, 30, 30],
         "matte white": [245, 245, 245],
         "white": [255, 255, 255],
-        "white ultra": [255, 255, 255],
-        "gold ultra": [153, 124, 60],
+        "gold metallic": [212, 175, 55],
         "silver metallic": [192, 192, 192],
+        "copper metallic": [184, 115, 51],
+        "golden yellow": [255, 201, 20],
+        "signal yellow": [255, 204, 0],
         "yellow": [255, 221, 51],
+        "light yellow": [255, 255, 153],
+        "brimstone yellow": [255, 225, 53],
+        "purple red": [128, 0, 64],
+        "burgundy": [128, 0, 32],
         "dark red": [139, 0, 0],
+        "red": [255, 0, 0],
+        "light red": [255, 102, 102],
+        "orange red": [255, 69, 0],
+        "orange": [255, 140, 0],
+        "light orange": [255, 165, 0],
+        "pastel orange": [255, 179, 128],
         "coral": [255, 127, 80],
         "purple": [128, 0, 128],
+        "violet": [238, 130, 238],
+        "lavender": [230, 230, 250],
+        "lilac": [200, 162, 200],
         "pink": [255, 105, 180],
+        "soft pink": [255, 182, 193],
+        "deep sea blue": [0, 51, 102],
+        "steel blue": [70, 130, 180],
+        "dark blue": [0, 0, 139],
+        "cobalt blue": [0, 71, 171],
+        "king blue": [0, 0, 255],
+        "brillant blue": [0, 112, 255],
         "blue": [0, 0, 255],
+        "traffic blue": [0, 114, 206],
+        "gentian blue": [0, 86, 167],
+        "gentian": [0, 70, 140],
+        "azure blue": [0, 127, 255],
+        "sky blue": [135, 206, 235],
         "light blue": [173, 216, 230],
+        "ice blue": [173, 216, 255],
+        "turquoise blue": [0, 199, 140],
+        "turquoise": [64, 224, 208],
+        "mint": [189, 252, 201],
+        "dark green": [0, 100, 0],
+        "forest green": [34, 139, 34],
         "green": [0, 255, 0],
+        "grass green": [124, 252, 0],
+        "light green": [144, 238, 144],
+        "yellow green": [154, 205, 50],
+        "lime-tree green": [50, 205, 50],
+        "brown": [139, 69, 19],
+        "nut brown": [153, 101, 21],
+        "light brown": [181, 101, 29],
         "dark grey": [64, 64, 64],
-        "teal": [0, 128, 128],
+        "cream": [255, 253, 208],
+        "telegrey": [192, 192, 192],
+        "beige": [245, 245, 220],
+        "immitation gold": [204, 173, 96],
+        "grey": [128, 128, 128],
+        "middle grey": [169, 169, 169],
+        "light grey": [211, 211, 211],
 
         // Page 2 - Glitter/Ultra Vinyl
         "black ultra": [10, 10, 10],
@@ -81,69 +123,113 @@ function getColorRGB(colorName) {
         "holographic green": [0, 255, 127]
     };
 
-    var normalized = ("" + colorName).toLowerCase().replace(/^\s+|\s+$/g, "");
-    return colors[normalized] || [0, 0, 0]; // Fallback to black
+    function getColorRGB(colorName) {
+    var normalized = String(colorName).toLowerCase().replace(/^\\s+|\\s+$/g, "");
+    return COLOR_MAP[normalized] || [0, 0, 0]; // Fallback to black
 }
 
+function ensureFolderExists(fileObj) {
+    var folder = fileObj.parent;
+    if (!folder.exists) folder.create();
+}
 
-// Replace these during runtime (Power Automate will do that)
-var textContent = "DecalText";
-var fontName = "DecalFont";
-var fontSizeInInches = parseFloat("DecalSize");
-var colorName = "DecalColor";
+var doc = app.documents.length > 0 ? app.activeDocument : app.documents.add(DocumentColorSpace.RGB, 864, 1728);
+
+var padding = 36;
+var xOffset = padding;
+var yOffset = padding;
+var maxRowHeight = 0;
 var outputPath = "SVGOutputPath";
 
-// Step 1: Use default safe point size initially
-var initialSize = 100;
+for (var i = 0; i < orders.length; i++) {
+    var order = orders[i];
 
-var fillColor = new RGBColor();
-var rgb = getColorRGB(colorName);
-fillColor.red = rgb[0];
-fillColor.green = rgb[1];
-fillColor.blue = rgb[2];
+    var initialSize = 100;
+    var fillColor = new RGBColor();
+    var rgb = getColorRGB(order.color);
+    fillColor.red = rgb[0];
+    fillColor.green = rgb[1];
+    fillColor.blue = rgb[2];
 
-// Create text frame
-var textFrame = doc.textFrames.add();
-textFrame.contents = textContent;
-textFrame.textRange.characterAttributes.size = initialSize;
+    var textFrame = doc.textFrames.add();
+    textFrame.contents = order.text;
+    textFrame.textRange.characterAttributes.size = initialSize;
 
-try {
-    textFrame.textRange.characterAttributes.textFont = app.textFonts.getByName(fontName);
-} catch (e) {
-    textFrame.textRange.characterAttributes.textFont = app.textFonts.getByName("MyriadPro-Regular");
+    try {
+        textFrame.textRange.characterAttributes.textFont = app.textFonts.getByName(order.font);
+    } catch (e) {
+        textFrame.textRange.characterAttributes.textFont = app.textFonts.getByName("MyriadPro-Regular");
+    }
+
+    textFrame.textRange.characterAttributes.fillColor = fillColor;
+
+    var outlinedItems = textFrame.createOutline();
+    var group = doc.groupItems.add();
+    if (outlinedItems.length !== undefined) {
+        for (var j = 0; j < outlinedItems.length; j++) {
+            outlinedItems[j].moveToBeginning(group);
+        }
+    } else {
+        outlinedItems.moveToBeginning(group);
+    }
+
+    app.selection = null;
+    for (var j = 0; j < group.pageItems.length; j++) {
+        group.pageItems[j].selected = true;
+    }
+    app.executeMenuCommand("Live Pathfinder Add");
+
+    var sel = app.activeDocument.selection;
+    app.selection = null;
+    var unitedGroup = null;
+    if (sel[0].typename === "GroupItem") {
+        unitedGroup = sel[0];
+    } else {
+        unitedGroup = doc.groupItems.add();
+        for (var j = 0; j < sel.length; j++) {
+            sel[j].moveToBeginning(unitedGroup);
+        }
+    }
+
+    var targetWidthPts = order.size * 72;
+    var bounds = unitedGroup.geometricBounds;
+    var width = bounds[2] - bounds[0];
+    var height = bounds[1] - bounds[3];
+    var scale = targetWidthPts / width;
+    unitedGroup.resize(scale * 100, scale * 100);
+
+    bounds = unitedGroup.geometricBounds;
+    width = bounds[2] - bounds[0];
+    height = bounds[1] - bounds[3];
+
+    if (xOffset + width + padding > doc.width) {
+        xOffset = padding;
+        yOffset += maxRowHeight + padding;
+        maxRowHeight = 0;
+    }
+    if (yOffset + height + padding > doc.height) {
+        alert("Artboard space exceeded. Some items not placed.");
+        break;
+    }
+
+    // Updated positioning logic to align properly within the artboard
+    unitedGroup.left = xOffset;
+    unitedGroup.top = doc.height - yOffset;
+
+    xOffset += width + padding;
+    if (height > maxRowHeight) maxRowHeight = height;
 }
 
-textFrame.textRange.characterAttributes.fillColor = fillColor;
+// Save the file as SVG
+var outputFile = new File(outputPath);
+ensureFolderExists(outputFile);
+var exportOptions = new ExportOptionsSVG();
+exportOptions.embedRasterImages = true;
+doc.exportFile(outputFile, ExportType.SVG, exportOptions);
 
-// Convert to outlines and group
-var outlinedItems = textFrame.createOutline();
-var group = doc.groupItems.add();
-for (var i = 0; i < outlinedItems.length; i++) {
-    outlinedItems[i].moveToBeginning(group);
+// Optional: Remove all page items (clean up for next use)
+while (doc.pageItems.length > 0) {
+    doc.pageItems[0].remove();
 }
 
-// Resize to exact decal width using geometric bounds for accuracy
-var targetWidthPts = fontSizeInInches * 72;
-var groupBounds = group.geometricBounds; // [x1, y1, x2, y2]
-var groupWidth = groupBounds[2] - groupBounds[0];
-var scaleFactor = targetWidthPts / groupWidth;
-group.resize(scaleFactor * 100, scaleFactor * 100);
-
-// Align group 0.5" from top-left corner
-var offsetX = 5.5 * 72;
-var offsetY = 0.5 * 72;
-groupBounds = group.geometricBounds; // recalculate after resize
-var targetLeft = offsetX;
-var targetTop = 1728 - offsetY; // top of 24"
-var deltaX = targetLeft - groupBounds[0];
-var deltaY = targetTop - groupBounds[1];
-group.translate(deltaX, deltaY);
-
-// Save as SVG
-var saveFile = new File(outputPath);
-var saveOptions = new ExportOptionsSVG();
-saveOptions.embedRasterImages = true;
-doc.exportFile(saveFile, ExportType.SVG, saveOptions);
-// Show full artboard and center it in the window
-// app.executeMenuCommand("fitinwindow"); // Removed to prevent error
-
+alert("SVGs generated, saved to Desktop, and document cleaned up.");
